@@ -4,13 +4,15 @@
 #include <vector>
 #include "pipes.h"
 
+//todo: it is going to be a problem that finding a sink always adds 1 to the cells filled with water
+// especially when a cross leads directly to a sink
 
 void initializeVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited)
 {
-    for (size_t i = 0; i < state.size(); i++)
+    for (int i = 0; i < state.size(); i++)
     {
         std::vector<int> row = {};
-        for (size_t ii = 0; ii < state[0].size(); ii++)
+        for (int ii = 0; ii < state[0].size(); ii++)
         {
             row.push_back(0);
         }
@@ -19,7 +21,7 @@ void initializeVisited(std::vector<std::string>& state, std::vector<std::vector<
 }
 
 
-bool pipeStart(std::vector<std::string>& state, const size_t& i, const size_t& ii)
+bool pipeStart(std::vector<std::string>& state, const int& i, const int& ii)
 {
     return state[i][ii] > 96 && state[i][ii] < 123;
 }
@@ -97,7 +99,7 @@ std::vector<int> checkNorth(int frStep, int fcStep, std::vector<std::string>& st
 }
 
 //anyhting that isn't 0 counts as visited or not visitable, with no distinction between 'visited' and 'not visitable' necessary
-int checkNorthVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep, const char& source)
+int checkNorthVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep)
 {
     if (frStep == 0) {
         //off of state matrix
@@ -131,7 +133,7 @@ int checkNorthVisited(std::vector<std::string>& state, std::vector<std::vector<i
     }
 }
 
-int checkSouthVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep, const char& source)
+int checkSouthVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep)
 {
     if (frStep == state.size()) {
         //off of state matrix
@@ -165,7 +167,7 @@ int checkSouthVisited(std::vector<std::string>& state, std::vector<std::vector<i
     }
 }
 
-int checkWestVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep, const char& source)
+int checkWestVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep)
 {
     if (fcStep == 0) {
         //off of state matrix
@@ -199,7 +201,7 @@ int checkWestVisited(std::vector<std::string>& state, std::vector<std::vector<in
     }
 }
 
-int checkEastVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep, const char& source)
+int checkEastVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep)
 {
     if (fcStep == 0) {
         //off of state matrix
@@ -233,7 +235,7 @@ int checkEastVisited(std::vector<std::string>& state, std::vector<std::vector<in
     }
 }
 
-int pipeSink(std::vector<std::string>& state, const size_t& i, const size_t& ii, const char& source)
+int pipeSink(std::vector<std::string>& state, const int& i, const int& ii, const char& source)
 {
     const char& s = state[i][ii];
     bool sink = s > 64 && s < 91;
@@ -248,14 +250,13 @@ int pipeSink(std::vector<std::string>& state, const size_t& i, const size_t& ii,
     else{
         return 0;
     }
-    return ;
 }
 
 void print(std::vector<std::vector<int>>&foo) {
     std::cout.put('\n\n');
-    for (std::size_t row{}; row < foo.size(); ++row) {
+    for (int row{}; row < foo.size(); ++row) {
         std::cout << ' ';
-        for (std::size_t col{}; col < foo[row].size(); ++col) {
+        for (int col{}; col < foo[row].size(); ++col) {
             std::cout << foo[row][col] << ' ';
         }
         std::cout.put('\n');
@@ -284,20 +285,24 @@ int solution(std::vector<std::string>state) {
     initializeVisited(state, visited);
 
     std::vector<std::vector<int>> sourcesRC = {};
-    std::vector<std::vector<char>> sourceCodes = {};
+    std::vector<char> sourceCodes = {};
     std::vector<int> cellCount = {};
 
-    getPipeSources(state, sourcesRC, sourceCodes, cellCount);
+    std::vector<int> finishedSteps = {};
+    std::vector<int> leakedSteps = {};
+    std::vector<int> cycledSteps = {};
+    getPipeSources(state, sourcesRC, sourceCodes, cellCount, finishedSteps, leakedSteps, cycledSteps);
 
+    int sourcesCount = sourcesRC.size();
     std::vector<std::vector<int>> nextSteps = {}; //any place where nextSteps is updated, sourcesRC is updated
     getInitialSteps(sourcesRC, nextSteps, state, visited);
 
-    bool stepsPropagating = true;
-    int loopCount = 0;
-    while (stepsPropagating && loopCount < INT16_MAX) {
-        for (size_t ii = 0; ii < nextSteps.size(); ii++)//nextSteps for each source
+    bool bContinue = true;
+    int sourcesPropogating = sourcesRC.size();
+    while (sourcesPropogating > 0 && bContinue) {
+        for (int ii = 0; ii < nextSteps.size(); ii++)//nextSteps for each source
         {
-            for (size_t i = 0; i < nextSteps[ii].size() - 1; i += 2)//next steps are stored like [(r,c),(r,c)]
+            for (int i = 0; i < int(nextSteps[ii].size()) - 1; i += 2)//next steps are stored like [(r,c),(r,c)]
             {
                 print(visited);
                 char cell = state[nextSteps[ii][i]][nextSteps[ii][i + 1]];
@@ -312,7 +317,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -1;
+                        cycledSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (northVisited == 1 && southVisited < 0) {
                         //dead end
@@ -322,7 +328,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (southVisited == 1 && northVisited < 0) {
                         //dead end
@@ -332,11 +339,12 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (southVisited == 1 && northVisited == 0) {
                         //add north to nextSteps, flow is north
-                        int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1], sourceCodes[ii][i]);
+                        int sink = pipeSink(state, nextSteps[ii][i]-1, nextSteps[ii][i + 1], sourceCodes[ii]);
                         if (sink == 0) {
                             ++cellCount[ii];
                             visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
@@ -346,21 +354,40 @@ int solution(std::vector<std::string>state) {
                             nextSteps[ii][i + 1] = nextSteps[ii][i + 1]; //column
                         }
                         else if (sink == 2) {
-                            //finished path
-
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i]-1][nextSteps[ii][i + 1]] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if(sink == -1){
+                            //wrong sink
+                            leakedSteps[ii] = cellCount[ii];
+                            bContinue = false;
                         }
                     }
                     else if (southVisited == 0 && northVisited == 1) {
                         //add south to nextSteps, flow is south
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row+1 for south
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        int sink = pipeSink(state, nextSteps[ii][i]+1, nextSteps[ii][i + 1], sourceCodes[ii]);
+                        if (sink == 0) {
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row+1 for south
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i] + 1][nextSteps[ii][i + 1]] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else {
+                        //visited is messed up
                         //no idea, this should be impossible
-                        return -3;
+                        return -666;
                     }
 
                 }
@@ -375,7 +402,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -1;
+                        cycledSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (westVisited == 1 && eastVisited < 0) {
                         //dead end
@@ -385,7 +413,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (eastVisited == 1 && westVisited < 0) {
                         //dead end
@@ -395,25 +424,51 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (eastVisited == 1 && westVisited == 0) {
-                        //add west to nextSteps, flow is west
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column - 1 for west
+                        int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]-1, sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add west to nextSteps, flow is west
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column - 1 for west
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]-1] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else if (eastVisited == 0 && westVisited == 1) {
-                        //add east to nextSteps, flow is east
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column + 1 for east
+                        int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]+1, sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add east to nextSteps, flow is east
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column + 1 for east
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]+1] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else {
+                        //visited broken
                         //no idea, this should be impossible
                         return -3;
                     }
@@ -429,7 +484,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -1;
+                        cycledSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (southVisited == 1 && eastVisited < 0) {
                         //dead end
@@ -439,7 +495,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (eastVisited == 1 && southVisited < 0) {
                         //dead end
@@ -449,23 +506,48 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (eastVisited == 1 && southVisited == 0) {
-                        //add south to nextSteps, flow is south
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        int sink = pipeSink(state, nextSteps[ii][i]+1, nextSteps[ii][i + 1], sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add south to nextSteps, flow is south
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i] + 1][nextSteps[ii][i + 1]] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else if (eastVisited == 0 && southVisited == 1) {
-                        //add east to nextSteps, flow is east
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column + 1 for east
+                        int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]+1, sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add east to nextSteps, flow is east
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column + 1 for east
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]+1] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else {
                         //no idea, this should be impossible
@@ -483,7 +565,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -1;
+                        cycledSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (southVisited == 1 && westVisited < 0) {
                         //dead end
@@ -493,7 +576,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (westVisited == 1 && southVisited < 0) {
                         //dead end
@@ -503,25 +587,51 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (westVisited == 1 && southVisited == 0) {
-                        //add south to nextSteps, flow is south
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        int sink = pipeSink(state, nextSteps[ii][i]+1, nextSteps[ii][i + 1], sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add south to nextSteps, flow is south
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i] + 1][nextSteps[ii][i + 1]] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else if (westVisited == 0 && southVisited == 1) {
-                        //add west to nextSteps, flow is west
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column + 1 for east
+                        int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]-1, sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add west to nextSteps, flow is west
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column + 1 for east
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]-1] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else {
+                        //visited broken
                         //no idea, this should be impossible
                         return -3;
                     }
@@ -537,7 +647,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -1;
+                        cycledSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (northVisited == 1 && westVisited < 0) {
                         //dead end
@@ -547,7 +658,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (westVisited == 1 && northVisited < 0) {
                         //dead end
@@ -557,25 +669,51 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (westVisited == 1 && northVisited == 0) {
-                        //add north to nextSteps, flow is north
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i] - 1); //row-1 for north
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        int sink = pipeSink(state, nextSteps[ii][i]-1, nextSteps[ii][i + 1], sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add north to nextSteps, flow is north
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i] - 1); //row-1 for north
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i] - 1][nextSteps[ii][i + 1]] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else if (westVisited == 0 && northVisited == 1) {
-                        //add west to nextSteps, flow is west
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column -1
+                        int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]-1, sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add west to nextSteps, flow is west
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column -1
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]-1] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else {
+                        //visited broken
                         //no idea, this should be impossible
                         return -3;
                     }
@@ -592,7 +730,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -1;
+                        cycledSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (northVisited == 1 && eastVisited < 0) {
                         //dead end
@@ -602,7 +741,8 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (eastVisited == 1 && northVisited < 0) {
                         //dead end
@@ -612,25 +752,51 @@ int solution(std::vector<std::string>state) {
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         sourcesRC[ii].erase(sourcesRC[ii].begin() + i);
                         i -= 2;
-                        return -2;
+                        leakedSteps[ii] = cellCount[ii];
+                        bContinue = false;
                     }
                     else if (eastVisited == 1 && northVisited == 0) {
-                        //add north to nextSteps, flow is north
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i] - 1); //row-1 for north
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        int sink = pipeSink(state, nextSteps[ii][i]-1, nextSteps[ii][i + 1], sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add north to nextSteps, flow is north
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i] - 1); //row-1 for north
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i] - 1][nextSteps[ii][i + 1]] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else if (eastVisited == 0 && northVisited == 1) {
-                        //add east to nextSteps, flow is east
-                        visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
-                        sourcesRC[ii][i] = nextSteps[ii][i];
-                        sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                        nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                        nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column -1
+                        int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]+1, sourceCodes[ii]);
+                        if (sink == 0) {
+                            //add east to nextSteps, flow is east
+                            ++cellCount[ii];
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            sourcesRC[ii][i] = nextSteps[ii][i];
+                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column -1
+                        }
+                        else if (sink == 2) {
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] = 4;
+                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]+1] = 6;
+                            finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                        }
+                        else if (sink == -1) {
+
+                        }
                     }
                     else {
+                        //visited broken
                         //no idea, this should be impossible
                         return -3;
                     }
@@ -657,14 +823,30 @@ int solution(std::vector<std::string>state) {
                             i -= 2;
                         }
                         else if (northVisited == 0) {
-                            //add north to nextSteps, flow is north
-                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 1;
-                            sourcesRC[ii][i] = nextSteps[ii][i];
-                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                            nextSteps[ii][i] = (nextSteps[ii][i] - 1); //row-1 for north
-                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                            int sink = pipeSink(state, nextSteps[ii][i]-1, nextSteps[ii][i + 1], sourceCodes[ii]);
+                            if (sink == 0) {
+                                //add north to nextSteps, flow is north
+                                if (visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] == 0)
+                                {
+                                    ++cellCount[ii];
+                                }
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 1;
+                                sourcesRC[ii][i] = nextSteps[ii][i];
+                                sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                                nextSteps[ii][i] = (nextSteps[ii][i] - 1); //row-1 for north
+                                nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                            }
+                            else if (sink == 2) {
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 1;
+                                visited[nextSteps[ii][i] - 1][nextSteps[ii][i + 1]] = 6;
+                                finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                            }
+                            else if (sink == -1) {
+
+                            }
                         }
                         else {
+                            //visited broken
                             //no idea, this should be impossible
                             return -3;
                         }
@@ -690,12 +872,27 @@ int solution(std::vector<std::string>state) {
                             i -= 2;
                         }
                         else if (southVisited == 0) {
-                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 1;
-                            //add south to nextSteps, flow is south
-                            sourcesRC[ii][i] = nextSteps[ii][i];
-                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                            nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row
-                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                            int sink = pipeSink(state, nextSteps[ii][i]+1, nextSteps[ii][i + 1], sourceCodes[ii]);
+                            if (sink == 0) {
+                                if (visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] == 0)
+                                {
+                                    ++cellCount[ii];
+                                }
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 1;
+                                //add south to nextSteps, flow is south
+                                sourcesRC[ii][i] = nextSteps[ii][i];
+                                sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                                nextSteps[ii][i] = (nextSteps[ii][i] + 1); //row
+                                nextSteps[ii][i + 1] = (nextSteps[ii][i + 1]); //column
+                            }
+                            else if (sink == 2) {
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 1;
+                                visited[nextSteps[ii][i] + 1][nextSteps[ii][i + 1]] = 6;
+                                finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                            }
+                            else if (sink == -1) {
+
+                            }
                         }
                         else {
                             //no idea, this should be impossible
@@ -723,12 +920,27 @@ int solution(std::vector<std::string>state) {
                             i -= 2;
                         }
                         else if (westVisited == 0) {
-                            //add west to nextSteps, flow is west
-                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 2;
-                            sourcesRC[ii][i] = nextSteps[ii][i];
-                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column - 1 for west
+                            int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]-1, sourceCodes[ii]);
+                            if (sink == 0) {
+                                //add west to nextSteps, flow is west
+                                if (visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] == 0)
+                                {
+                                    ++cellCount[ii];
+                                }
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 2;
+                                sourcesRC[ii][i] = nextSteps[ii][i];
+                                sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                                nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                                nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] - 1); //column - 1 for west
+                            }
+                            else if (sink == 2) {
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 2;
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]-1] = 6;
+                                finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                            }
+                            else if (sink == -1) {
+
+                            }
                         }
                         else {
                             //no idea, this should be impossible
@@ -756,12 +968,27 @@ int solution(std::vector<std::string>state) {
                             i -= 2;
                         }
                         else if (eastVisited == 0) {
-                            //add east to nextSteps, flow is east
-                            visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 2;
-                            sourcesRC[ii][i] = nextSteps[ii][i];
-                            sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
-                            nextSteps[ii][i] = (nextSteps[ii][i]); //row
-                            nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column -1
+                            int sink = pipeSink(state, nextSteps[ii][i], nextSteps[ii][i + 1]+1, sourceCodes[ii]);
+                            if (sink == 0) {
+                                //add east to nextSteps, flow is east
+                                if (visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] == 0)
+                                {
+                                    ++cellCount[ii];
+                                }
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 2;
+                                sourcesRC[ii][i] = nextSteps[ii][i];
+                                sourcesRC[ii][i + 1] = nextSteps[ii][i + 1];
+                                nextSteps[ii][i] = (nextSteps[ii][i]); //row
+                                nextSteps[ii][i + 1] = (nextSteps[ii][i + 1] + 1); //column -1
+                            }
+                            else if (sink == 2) {
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1]] += 2;
+                                visited[nextSteps[ii][i]][nextSteps[ii][i + 1] + 1] = 6;
+                                finishPath(finishedSteps, ii, cellCount, sourcesRC, nextSteps);
+                            }
+                            else if (sink == -1) {
+
+                            }
                         }
                         else {
                             //no idea, this should be impossible
@@ -779,13 +1006,50 @@ int solution(std::vector<std::string>state) {
                 }
             }
         }
+
+        sourcesPropogating = 0;
+        for (size_t i = 0; i < sourcesRC.size(); i++)
+        {
+            sourcesPropogating += sourcesRC[i].size();
+        }
+        int cycles = 0;
+        for (size_t i = 0; i < cycledSteps.size(); i++)
+        {
+            cycles += cycledSteps[i];
+        }
+        int leaks = 0;
+        for (size_t i = 0; i < leakedSteps.size(); i++)
+        {
+            leaks += leakedSteps[i];
+        }
+        if (sourcesPropogating == 0 && cycles == 0 && leaks == 0) {
+            int totalstepsfinished = 0;
+            for (size_t i = 0; i < finishedSteps.size(); i++)
+            {
+                totalstepsfinished += finishedSteps[i];
+            }
+            return totalstepsfinished;
+        }
+        else if (cycles > 0 || leaks > 0) {
+            return -leaks - cycles;
+        }
     }
     return -7;
 }
 
+void finishPath(std::vector<int>& finishedSteps, int& ii, std::vector<int>& cellCount, std::vector<std::vector<int>>& sourcesRC, std::vector<std::vector<int>>& nextSteps)
+{
+
+    //finished path, add it to the respective finished steps vector
+    //remove the path from being traversed
+    finishedSteps[ii] = cellCount[ii]+=1;
+    sourcesRC[ii].clear();
+    nextSteps[ii].clear();
+}
+
 void getInitialSteps(std::vector<std::vector<int>>& sourcesRC, std::vector<std::vector<int>>& nextSteps, std::vector<std::string>& state, std::vector<std::vector<int>>& visited)
 {
-    for (size_t i = 0; i < sourcesRC.size(); i++)
+    for (int i = 0; i < sourcesRC.size(); i++)
     {
         nextSteps.push_back({});
         checkNorth(sourcesRC[i][0], sourcesRC[i][1], state, nextSteps[i], sourcesRC[i]);
@@ -796,19 +1060,21 @@ void getInitialSteps(std::vector<std::vector<int>>& sourcesRC, std::vector<std::
     }
 }
 
-void getPipeSources(std::vector<std::string>& state, std::vector<std::vector<int>>& sourcesRC, std::vector<std::vector<char>>& sourceCodes, std::vector<int>& cellCount)
+void getPipeSources(std::vector<std::string>& state, std::vector<std::vector<int>>& sourcesRC, std::vector<char>& sourceCodes, std::vector<int>& cellCount, std::vector<int>& finishedSteps, std::vector<int>& leakedSteps, std::vector<int>& cycledSteps)
 {
-    for (size_t i = 0; i < state.size(); i++)
+    for (int i = 0; i < state.size(); i++)
     {
-        for (size_t ii = 0; ii < state[0].size(); ii++)
+        for (int ii = 0; ii < state[0].size(); ii++)
         {
             if (pipeStart(state, i, ii)) {
                 sourcesRC.push_back({});
-                sourceCodes.push_back({}); //source codes do not change
                 sourcesRC[sourcesRC.size()-1].push_back(i);
                 sourcesRC[sourcesRC.size()-1].push_back(ii);
-                sourceCodes[sourceCodes.size() - 1].push_back(state[i][ii]);
+                sourceCodes.push_back(state[i][ii]);
                 cellCount.push_back(0);
+                finishedSteps.push_back(0);
+                leakedSteps.push_back(0);
+                cycledSteps.push_back(0);
             }
         }
     }
@@ -822,10 +1088,10 @@ int main()
         "0b27275100000",
         "00c7256500000",
         "0006A45000000" };
-
-    if (solution(state) == 19) {
+    int test = solution(state);
+    if (test == 19) {
         std::cout << "\n\Success!\n\n";
         return 0;
     }
-    std::cout << "\n\nFail!\n\n";
+    std::cout << "\ngave: "  << test << "\n\nFail!\n\n\n\n";
 }
