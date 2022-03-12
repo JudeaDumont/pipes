@@ -1050,7 +1050,7 @@ int solution(std::vector<std::string>state) {
             return -leaks - cycles;
         }
     }
-    return -7;
+    return 0; // this occurrs in the case where the state is just zeros
 }
 
 void finishPath(std::vector<int>& finishedSteps, int& ii, std::vector<int>& cellCount, std::vector<std::vector<int>>& sourcesRC, std::vector<std::vector<int>>& nextSteps)
@@ -1110,7 +1110,7 @@ void test(const std::vector<std::string>& state, int test)
 
 int main()
 {
-    test({ 
+    test({ //1
         "a224C22300000",
         "0001643722B00",
         "0b27275100000",
@@ -1118,8 +1118,47 @@ int main()
         "0006A45000000" 
         }, 19);
 
-    test({
+    test({//2
         "a000",
         "000A"
+        }, 0);
+
+
+    test({//3
+        "a727272777A"
+        }, 9);
+
+
+    test({//4
+        "a",
+        "7",
+        "1",
+        "7",
+        "7",
+        "1",
+        "1",
+        "A"
+        }, 6);
+
+    test({//5
+        "A0000b0000",
+        "0000000000",
+        "0000000000",
+        "0000a00000",
+        "0000000000",
+        "0c00000000",
+        "01000000B0",
+        "0C00000000"
+        }, 1);
+
+    test({//6
+        "0000000000",
+        "0000000000",
+        "0000000000",
+        "0000000000",
+        "0000000000",
+        "0000000000",
+        "0000000000",
+        "0000000000"
         }, 0);
 }
