@@ -27,3 +27,4 @@ int checkWestVisited(std::vector<std::string>& state, std::vector<std::vector<in
 int checkEastVisited(std::vector<std::string>& state, std::vector<std::vector<int>>& visited, int frStep, int fcStep);
 
 int pipeSink(std::vector<std::string>& state, const int& i, const int& ii, const char& source);
+

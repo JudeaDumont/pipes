@@ -65,8 +65,6 @@ std::vector<int> checkEast(int frStep, int fcStep, std::vector<std::string>& sta
     //right/east
     if (fcStep + 1 != state[0].size()) {
 
-        std::cout << "cum: " << state[frStep][fcStep + 1];
-
         //check for left and horizontal pipes.
         if (state[frStep][fcStep + 1] == '2' ||
             state[frStep][fcStep + 1] == '4' ||
@@ -253,6 +251,18 @@ int pipeSink(std::vector<std::string>& state, const int& i, const int& ii, const
 }
 
 void print(std::vector<std::vector<int>>&foo) {
+    std::cout.put('\n\n');
+    for (int row{}; row < foo.size(); ++row) {
+        std::cout << ' ';
+        for (int col{}; col < foo[row].size(); ++col) {
+            std::cout << foo[row][col] << ' ';
+        }
+        std::cout.put('\n');
+    }
+    std::cout.put('\n');
+}
+
+void print(const std::vector<std::string>& foo) {
     std::cout.put('\n\n');
     for (int row{}; row < foo.size(); ++row) {
         std::cout << ' ';
@@ -1022,7 +1032,13 @@ int solution(std::vector<std::string>state) {
         {
             leaks += leakedSteps[i];
         }
-        if (sourcesPropogating == 0 && cycles == 0 && leaks == 0) {
+        int nextStepsLeft = 0;
+        for (size_t i = 0; i < nextSteps.size(); i++)
+        {
+            nextStepsLeft += (nextSteps[i].size() / 2);
+        }
+
+        if ((sourcesPropogating == 0 || nextStepsLeft == 0) && cycles == 0 && leaks == 0) {
             int totalstepsfinished = 0;
             for (size_t i = 0; i < finishedSteps.size(); i++)
             {
@@ -1080,18 +1096,30 @@ void getPipeSources(std::vector<std::string>& state, std::vector<std::vector<int
     }
 }
 
+void test(const std::vector<std::string>& state, int test)
+{
+    print(state);
+    int iSolution = solution(state);
+    if (iSolution == test) {
+        std::cout << "\ngave: " << iSolution << "\n\Success!\n\n";
+    }
+    else {
+        std::cout << "\ngave: " << iSolution << "\n\nFail!\n\n\n\n";
+    }
+}
+
 int main()
 {
-    std::vector<std::string>state =
-    { "a224C22300000",
+    test({ 
+        "a224C22300000",
         "0001643722B00",
         "0b27275100000",
         "00c7256500000",
-        "0006A45000000" };
-    int test = solution(state);
-    if (test == 19) {
-        std::cout << "\n\Success!\n\n";
-        return 0;
-    }
-    std::cout << "\ngave: "  << test << "\n\nFail!\n\n\n\n";
+        "0006A45000000" 
+        }, 19);
+
+    test({
+        "a000",
+        "000A"
+        }, 0);
 }
